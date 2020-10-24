@@ -4,9 +4,9 @@ from flask import Blueprint
 
 from flask_restful import Api
 
+from cabinet._types import ApiResponse
 from cabinet.api import CabinetResource
 from cabinet.response import CabinetApiResponse
-from cabinet._types import ApiResponse
 
 logger = get_logger(__name__)
 
