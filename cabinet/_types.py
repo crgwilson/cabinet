@@ -1,3 +1,6 @@
-from typing import Tuple
+import typing
 
-ApiResponse = Tuple[str, int]
+ApiObjectAttribute = typing.Union[str, int]
+ApiObject = typing.Mapping[str, ApiObjectAttribute]
+
+ApiResponse = typing.Tuple[ApiObject, int]
