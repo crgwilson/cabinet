@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# pyenv
+.python-version
+
+venv/
+*.egg-info/
+.tox/
+
+.DS_Store
+.DS_Store?
+
+# Vagrant
+.vagrant/
