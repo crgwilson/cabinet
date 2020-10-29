@@ -42,7 +42,7 @@ class User(db.Model):
         return bcrypt.checkpw(param_bytes, pw_bytes)
 
     def __repr__(self) -> str:
-        return f"User(username={self.username}"
+        return f"User(username={self.username})"
 
 
 listen(User, "before_insert", hash_password)
