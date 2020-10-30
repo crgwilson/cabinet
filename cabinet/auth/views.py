@@ -10,7 +10,6 @@ from cabinet._types import ApiResponse
 from cabinet.api import CabinetResource
 from cabinet.auth.schemas import (
     login_input_schema,
-    login_output_schema,
     permission_list_schema,
     role_list_schema,
 )

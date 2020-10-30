@@ -28,7 +28,11 @@ class AuthToken(object):
         }
 
     def encode(self) -> bytes:
-        return jwt.encode(self.payload, self.secret, algorithm=self.ALGO,)
+        return jwt.encode(
+            self.payload,
+            self.secret,
+            algorithm=self.ALGO,
+        )
 
     @classmethod
     def decode(cls, token: bytes, secret: str) -> "AuthToken":
