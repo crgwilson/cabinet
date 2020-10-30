@@ -6,11 +6,17 @@ from flask import Blueprint
 from flask_restful import Api
 
 import cabinet.auth.controllers as auth_controller
+from cabinet._types import ApiResponse
 from cabinet.api import CabinetResource
-from cabinet.auth.schemas import permission_list_schema, role_list_schema
+from cabinet.auth.schemas import (
+    login_input_schema,
+    login_output_schema,
+    permission_list_schema,
+    role_list_schema,
+)
+from cabinet.schema import validate_schema
 
 # from cabinet.auth.schemas import permission_list_schema, permission_schema, role_list_schema, role_schema
-# from cabinet.schema import validate_schema
 
 logger = get_logger(__name__)
 
@@ -32,6 +38,12 @@ class RoleList(CabinetResource):
         rendered_result = self.render(result, role_list_schema)
 
         return rendered_result
+
+
+class Login(CabinetResource):
+    @validate_schema(login_input_schema)
+    def post(self) -> ApiResponse:
+        ...
 
 
 api.add_resource(PermissionList, "/permissions", endpoint="permissions")

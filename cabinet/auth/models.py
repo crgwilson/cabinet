@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Any, Dict
 
 from sqlalchemy.event import listen
@@ -34,6 +35,9 @@ class Permission(db.Model):
         db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now()
     )
 
+    def __repr__(self) -> str:
+        return f"Permission(name={self.name}, description={self.description}, object={self.object})"
+
 
 class Role(db.Model):
     __tablename__ = "role"
@@ -49,6 +53,33 @@ class Role(db.Model):
     updated_on = db.Column(
         db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now()
     )
+
+    def __repr__(self) -> str:
+        return f"Role(name={self.name}, description={self.description})"
+
+
+class Session(db.Model):
+    # TODO: Cleanup expired sessions
+    __tablename__ = "session"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    ttl = db.Column(db.BigInteger)
+    created_on = db.Column(db.DateTime, server_default=db.func.now())
+
+    def has_expired(self) -> bool:
+        if self.ttl == -1:
+            return False
+
+        now: datetime = datetime.now()
+        expiration_time: datetime = self.created_on + timedelta(seconds=self.ttl)
+        expired: bool = now > expiration_time
+
+        return expired
+
+    def __repr__(self) -> str:
+        return f"Session(user_id={self.user_id}, ttl={self.ttl}, created_on={self.created_on})"
 
 
 def init_roles_and_permissions(*args: Any, **kwargs: Any) -> None:

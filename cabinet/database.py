@@ -40,7 +40,8 @@ def get_list(model: DefaultMeta, value: Union[int, str], column: str = "id") -> 
 
 
 def get_all(model: DefaultMeta) -> List[Any]:
-    return model.query.all()
+    results: List[DefaultMeta] = model.query.all()
+    return results
 
 
 def insert(model: DefaultMeta) -> DefaultMeta:

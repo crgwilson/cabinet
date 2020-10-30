@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask.wrappers import Response
 
 import pytest
@@ -6,6 +8,8 @@ from cabinet import create_app
 from cabinet.config import CabinetConfig
 from cabinet.database import db as app_db
 from cabinet.response import HTTPResponseMessages, HTTPStatusCodes
+
+from tests.factories import UserFactory
 
 
 class Helpers:
@@ -72,6 +76,20 @@ def session(db, request):
 def client(app, session):
     with app.test_client() as c:
         yield c
+
+
+@pytest.fixture
+def user(session):
+    user_factory = UserFactory()
+    user = user_factory.new()
+
+    session.commit()
+    return user
+
+
+@pytest.fixture
+def now() -> datetime:
+    return datetime.now()
 
 
 @pytest.fixture

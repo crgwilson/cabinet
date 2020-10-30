@@ -1,7 +1,7 @@
 from marshmallow import Schema, fields
 
 
-class PermissionSchema(Schema):
+class PermissionOutputSchema(Schema):
     id = fields.Integer(required=True)
 
     name = fields.String(required=True)
@@ -11,19 +11,30 @@ class PermissionSchema(Schema):
     updated_on = fields.Time(required=True)
 
 
-class RoleSchema(Schema):
+class RoleOutputSchema(Schema):
     id = fields.Integer(required=True)
 
     name = fields.String(required=True)
     description = fields.String(required=True)
 
-    permissions = fields.Nested(lambda: PermissionSchema(only=["id"]))
+    permissions = fields.Nested(lambda: PermissionOutputSchema(only=["id"]))
 
     created_on = fields.Time(required=True)
     updated_on = fields.Time(required=True)
 
 
-permission_schema = PermissionSchema()
-permission_list_schema = PermissionSchema(many=True)
-role_schema = RoleSchema()
-role_list_schema = RoleSchema(many=True)
+class LoginInputSchema(Schema):
+    username = fields.String(required=True)
+    password = fields.String(required=True)
+
+
+class LoginOutputSchema(Schema):
+    token = fields.String(required=True)
+
+
+permission_schema = PermissionOutputSchema()
+permission_list_schema = PermissionOutputSchema(many=True)
+role_schema = RoleOutputSchema()
+role_list_schema = RoleOutputSchema(many=True)
+login_input_schema = LoginInputSchema()
+login_output_schema = LoginOutputSchema()
