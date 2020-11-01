@@ -7,8 +7,8 @@ class PermissionOutputSchema(Schema):
     name = fields.String(required=True)
     description = fields.String(required=True)
 
-    created_on = fields.Time(required=True)
-    updated_on = fields.Time(required=True)
+    created_on = fields.DateTime(required=True)
+    updated_on = fields.DateTime(required=True)
 
 
 class RoleOutputSchema(Schema):
@@ -19,8 +19,8 @@ class RoleOutputSchema(Schema):
 
     permissions = fields.Nested(lambda: PermissionOutputSchema(only=["id"]))
 
-    created_on = fields.Time(required=True)
-    updated_on = fields.Time(required=True)
+    created_on = fields.DateTime(required=True)
+    updated_on = fields.DateTime(required=True)
 
 
 class LoginInputSchema(Schema):

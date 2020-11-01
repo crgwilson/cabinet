@@ -14,8 +14,8 @@ class UserOutputSchema(Schema):
 
     roles = fields.List(fields.Nested(lambda: RoleOutputSchema(only=["id"])))
 
-    created_on = fields.Time(required=True)
-    updated_on = fields.Time(required=True)
+    created_on = fields.DateTime(required=True)
+    updated_on = fields.DateTime(required=True)
 
 
 user_schema = UserOutputSchema()

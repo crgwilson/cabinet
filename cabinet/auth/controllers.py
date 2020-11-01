@@ -31,7 +31,7 @@ class AuthToken(object):
     def payload(self) -> ApiObject:
         return {
             "user_id": self.user_id,
-            "created_on": str(self.created_on),
+            "created_on": self.created_on.isoformat(),
             "ttl": self.ttl,
         }
 
