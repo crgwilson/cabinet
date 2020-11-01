@@ -13,8 +13,6 @@ from cabinet.response import CabinetApiResponse
 from cabinet.schema import validate_schema
 from cabinet.user.schemas import user_input_schema, user_list_schema, user_schema
 
-# from cabinet.response import CabinetApiResponse
-
 API_OBJECT = "User"
 
 logger = get_logger(__name__)

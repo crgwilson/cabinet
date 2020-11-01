@@ -1,14 +1,10 @@
 from datetime import datetime
-from typing import Optional
-
-from flask.wrappers import Response
 
 import pytest
 
 from cabinet import create_app
 from cabinet.config import DevelopmentCabinetConfig
 from cabinet.database import db as app_db
-from cabinet.response import HTTPResponseMessages, HTTPStatusCodes
 
 from tests.factories import (
     AdminUserFactory,
@@ -17,48 +13,7 @@ from tests.factories import (
     UserFactory,
 )
 
-
 test_config = DevelopmentCabinetConfig()
-
-
-class Helpers:
-    SUCCESS_CODE = HTTPStatusCodes.OK.value
-    NOT_FOUND_CODE = HTTPStatusCodes.NOT_FOUND.value
-    ERROR_CODE = HTTPStatusCodes.INTERNAL_SERVER_ERROR.value
-
-    SUCCESS_MESSAGE = HTTPResponseMessages.OK.value
-    NOT_FOUND_MESSAGE = HTTPResponseMessages.NOT_FOUND.value
-
-    SUCCESS_JSON = {"message": SUCCESS_MESSAGE}
-    NOT_FOUND_JSON = {"message": NOT_FOUND_MESSAGE}
-
-    CONTENT_TYPE = "application/json"
-    AUTH_TYPE = "Bearer"
-
-    def headers(self, token: Optional[str] = None) -> dict:
-        headers = {}
-        headers["Content-Type"] = self.CONTENT_TYPE
-        if token:
-            headers["Authorization"] = f"{self.AUTH_TYPE} {token}"
-
-        return headers
-
-    def assert_valid(self, response: Response) -> None:
-        assert response.is_json
-        assert response.content_type == self.CONTENT_TYPE
-
-    def assert_success(self, response: Response) -> None:
-        self.assert_valid(response)
-        assert response.status_code == self.SUCCESS_CODE
-
-    def assert_not_found(self, response: Response) -> None:
-        self.assert_valid(response)
-        assert response.status_code == self.NOT_FOUND_CODE
-        assert response.json == self.NOT_FOUND_JSON
-
-    def assert_failure(self, response: Response) -> None:
-        self.assert_valid(response)
-        assert response.status_code == self.ERROR_CODE
 
 
 @pytest.yield_fixture(scope="session")
@@ -124,7 +79,7 @@ def user_predictable_password(session):
 
 
 @pytest.yield_fixture
-def session_token(session):
+def token(session):
     admin_user_id = 1
 
     session_factory = SessionFactory()
@@ -135,14 +90,46 @@ def session_token(session):
     token_factory = SessionTokenFactory()
     token = token_factory.new(new_session, test_config.CABINET_SECRET)
 
-    return token.decode("utf-8")
+    yield token.decode("utf-8")
+
+
+@pytest.yield_fixture
+def expired_token(session):
+    admin_user_id = 1
+
+    session_factory = SessionFactory()
+    new_session = session_factory.new(admin_user_id, ttl=0)
+
+    session.commit()
+
+    token_factory = SessionTokenFactory()
+    token = token_factory.new(new_session, test_config.CABINET_SECRET)
+
+    yield token.decode("utf-8")
+
+
+@pytest.yield_fixture(scope="function")
+def headers(token, expired_token) -> dict:
+    headers = {
+        "valid": {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+        "expired": {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {expired_token}",
+        },
+        "invalid_auth_type": {
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {token}",
+        },
+        "no_token": {"Content-Type": "application/json", "Authorization": "Bearer"},
+        "no_auth": {"Content-Type": "application/json"},
+    }
+
+    yield headers
 
 
 @pytest.fixture
 def now() -> datetime:
     return datetime.now()
-
-
-@pytest.fixture
-def helpers() -> Helpers:
-    return Helpers()

@@ -68,11 +68,12 @@ class Session(db.Model):
     ttl = db.Column(db.BigInteger)
     created_on = db.Column(db.DateTime, server_default=db.func.now())
 
+    @property
     def is_expired(self) -> bool:
         if self.ttl == -1:
             return False
 
-        now: datetime = datetime.now()
+        now: datetime = datetime.utcnow()
         expiration_time: datetime = self.created_on + timedelta(seconds=self.ttl)
         expired: bool = now > expiration_time
 

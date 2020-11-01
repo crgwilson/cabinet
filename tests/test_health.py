@@ -1,4 +1,3 @@
-def test_health_get(client, helpers):
+def test_health_get(client):
     response = client.get("/api/v1/health")
-
-    helpers.assert_success(response)
+    assert response.status_code == 200

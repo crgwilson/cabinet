@@ -1,5 +1,6 @@
 from datetime import datetime
 from functools import wraps
+from logging import getLogger as get_logger
 from typing import Any, Callable, List
 
 from flask import current_app, request
@@ -14,6 +15,8 @@ from cabinet.auth.models import Permission, Role, Session
 from cabinet.auth.permissions import ApiPermission
 from cabinet.response import CabinetApiResponse
 from cabinet.user.models import User
+
+logger = get_logger(__name__)
 
 
 class AuthToken(object):
@@ -124,10 +127,14 @@ def permission_required(api_object: str):
                 # TODO: Error here - Missing auth header
                 return CabinetApiResponse.unauthorized()
 
-            auth_header: str = request.headers.get("Authorization")
-            split_header: List[str] = auth_header.split()
-            auth_type: str = split_header[0]
-            auth_payload: bytes = str.encode(split_header[1])
+            try:
+                auth_header: str = request.headers.get("Authorization")
+                split_header: List[str] = auth_header.split()
+                auth_type: str = split_header[0]
+                auth_payload: bytes = str.encode(split_header[1])
+            except IndexError:
+                logger.error("Received request with malformed 'Authorization' header")
+                return CabinetApiResponse.unauthorized()
 
             if auth_type != "Bearer":
                 # TODO: Error here - unsupported auth type
@@ -137,7 +144,8 @@ def permission_required(api_object: str):
             token = AuthToken.decode(auth_payload, current_app.config["CABINET_SECRET"])
             # Might error here too
             session = get_session_with_token(token)
-            if session.is_expired():
+
+            if session.is_expired:
                 # TODO: Session token has expired, return unauthorized
                 return CabinetApiResponse.unauthorized()
 
