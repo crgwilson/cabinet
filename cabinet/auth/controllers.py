@@ -1,7 +1,7 @@
 from datetime import datetime
 from functools import wraps
 from logging import getLogger as get_logger
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Optional
 
 from flask import current_app, request
 
@@ -111,24 +111,27 @@ def delete_session(session_id: int) -> None:
 
 READ_METHODS = ["get"]
 WRITE_METHODS = ["put", "post", "patch"]
+DELETE_METHODS = ["delete"]
 
 
-def permission_required(api_object: str):
+def permission_required(api_object: str) -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def check_permissions(*args: Any, **kwargs: Any):
+        def check_permissions(*args: Any, **kwargs: Any) -> Any:
+            # TODO: Change the above return annotation
             if not api_object:
                 # TODO: Raise an exception here because we need this variable
                 return CabinetApiResponse.internal_server_error(
                     "Could not determine required permissions for this request"
                 )
 
-            if not request.headers.get("Authorization"):
+            auth_header: Optional[str] = request.headers.get("Authorization")
+            if not auth_header:
                 # TODO: Error here - Missing auth header
                 return CabinetApiResponse.unauthorized()
 
             try:
-                auth_header: str = request.headers.get("Authorization")
+                # auth_header: Optional[str] = request.headers.get("Authorization")
                 split_header: List[str] = auth_header.split()
                 auth_type: str = split_header[0]
                 auth_payload: bytes = str.encode(split_header[1])
@@ -149,11 +152,11 @@ def permission_required(api_object: str):
                 # TODO: Session token has expired, return unauthorized
                 return CabinetApiResponse.unauthorized()
 
-            is_write_operation = func.__name__ in WRITE_METHODS
             required_permission = ApiPermission(
                 object=api_object,
-                read=not is_write_operation,
-                write=is_write_operation,
+                read=func.__name__ in READ_METHODS,
+                write=func.__name__ in WRITE_METHODS,
+                delete=func.__name__ in DELETE_METHODS,
             )
 
             if not has_permission(session.user_id, required_permission):
@@ -183,15 +186,18 @@ def get_all_user_permissions(user_id: int) -> List[Permission]:
         .distinct()
     )
 
-    return query.all()
+    query_result: List[Permission] = query.all()
+    return query_result
 
 
 def has_permission(user_id: int, required_permission: ApiPermission) -> bool:
     # This could probably be better
     if required_permission.read:
         operation_type = Permission.read
-    else:
+    elif required_permission.write:
         operation_type = Permission.write
+    else:
+        operation_type = Permission.delete
 
     s = database.session()
     query = (

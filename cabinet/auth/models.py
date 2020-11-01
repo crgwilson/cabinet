@@ -20,6 +20,7 @@ class Permission(db.Model):
     object = db.Column(db.String(32), nullable=False)
     read = db.Column(db.Boolean(), nullable=False)
     write = db.Column(db.Boolean(), nullable=False)
+    delete = db.Column(db.Boolean(), nullable=False)
 
     roles = relationship(
         "Role", secondary=role_permission_association, back_populates="permissions"
@@ -93,6 +94,7 @@ def init_roles_and_permissions(*args: Any, **kwargs: Any) -> None:
                 object=permission_spec.permission.object,
                 read=permission_spec.permission.read,
                 write=permission_spec.permission.write,
+                delete=permission_spec.permission.delete,
             )
         )
         created_permissions[permission_spec.name] = permission_model

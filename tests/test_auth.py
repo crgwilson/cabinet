@@ -58,10 +58,10 @@ def test_fn_get_all_user_permissions(user) -> None:
 
 
 def test_fn_has_permission_admin_user(admin_user) -> None:
-    user_permission = ApiPermission(object="User", read=True, write=False)
+    user_permission = ApiPermission(object="User", read=True, write=False, delete=False)
     assert has_permission(admin_user.id, user_permission)
 
 
 def test_fn_has_permission_normal_user(user) -> None:
-    user_permission = ApiPermission(object="User", read=True, write=False)
+    user_permission = ApiPermission(object="User", read=True, write=False, delete=False)
     assert not has_permission(user.id, user_permission)
