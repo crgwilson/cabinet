@@ -1,5 +1,5 @@
-from cabinet.auth.controllers import AuthToken
-from cabinet.auth.permissions import all_roles
+from cabinet.auth.controllers import AuthToken, get_all_user_permissions, has_permission
+from cabinet.auth.permissions import ApiPermission, all_roles
 
 
 def test_roles_get(client, helpers) -> None:
@@ -38,3 +38,21 @@ def test_token_encode(now) -> None:
     assert decoded_token.created_on == mock_dattime
     assert decoded_token.ttl == mock_ttl
     assert decoded_token.secret == mock_secret
+
+
+def test_get_all_user_permissions(user) -> None:
+    all_permissions = get_all_user_permissions(user.id)
+
+    for role in user.roles:
+        for permission in role.permissions:
+            assert permission in all_permissions
+
+
+def test_has_permission_admin_user(admin_user) -> None:
+    user_permission = ApiPermission(object="User", read=True, write=False)
+    assert has_permission(admin_user.id, user_permission)
+
+
+def test_has_permission_normal_user(user) -> None:
+    user_permission = ApiPermission(object="User", read=True, write=False)
+    assert not has_permission(user.id, user_permission)

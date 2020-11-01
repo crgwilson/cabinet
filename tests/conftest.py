@@ -1,15 +1,24 @@
 from datetime import datetime
+from typing import Optional
 
 from flask.wrappers import Response
 
 import pytest
 
 from cabinet import create_app
-from cabinet.config import CabinetConfig
+from cabinet.config import DevelopmentCabinetConfig
 from cabinet.database import db as app_db
 from cabinet.response import HTTPResponseMessages, HTTPStatusCodes
 
-from tests.factories import UserFactory
+from tests.factories import (
+    AdminUserFactory,
+    SessionFactory,
+    SessionTokenFactory,
+    UserFactory,
+)
+
+
+test_config = DevelopmentCabinetConfig()
 
 
 class Helpers:
@@ -24,6 +33,15 @@ class Helpers:
     NOT_FOUND_JSON = {"message": NOT_FOUND_MESSAGE}
 
     CONTENT_TYPE = "application/json"
+    AUTH_TYPE = "Bearer"
+
+    def headers(self, token: Optional[str] = None) -> dict:
+        headers = {}
+        headers["Content-Type"] = self.CONTENT_TYPE
+        if token:
+            headers["Authorization"] = f"{self.AUTH_TYPE} {token}"
+
+        return headers
 
     def assert_valid(self, response: Response) -> None:
         assert response.is_json
@@ -45,7 +63,7 @@ class Helpers:
 
 @pytest.yield_fixture(scope="session")
 def app(request):
-    flask_app = create_app(CabinetConfig())
+    flask_app = create_app(test_config)
     ctx = flask_app.app_context()
     ctx.push()
 
@@ -85,6 +103,39 @@ def user(session):
 
     session.commit()
     return user
+
+
+@pytest.fixture
+def admin_user(session):
+    admin_user_factory = AdminUserFactory()
+    admin_user = admin_user_factory.new()
+
+    session.commit()
+    return admin_user
+
+
+@pytest.fixture
+def user_predictable_password(session):
+    user_factory = AdminUserFactory()
+    user = user_factory.new(password="password")  # noqa: S106
+
+    session.commit()
+    return user
+
+
+@pytest.yield_fixture
+def session_token(session):
+    admin_user_id = 1
+
+    session_factory = SessionFactory()
+    new_session = session_factory.new(admin_user_id)
+
+    session.commit()
+
+    token_factory = SessionTokenFactory()
+    token = token_factory.new(new_session, test_config.CABINET_SECRET)
+
+    return token.decode("utf-8")
 
 
 @pytest.fixture

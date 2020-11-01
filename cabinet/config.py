@@ -12,6 +12,8 @@ class CabinetConfig(NamedTuple):
     LOG_LEVEL: LOG_LEVEL = "INFO"
     LOG_FORMAT: str = "[%(asctime)s] %(process)s {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s"
 
+    CABINET_SECRET: str = "CHANGEME"
+
     DB_ADDR: str = ":memory:"
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
 
