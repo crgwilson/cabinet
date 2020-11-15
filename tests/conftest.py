@@ -151,7 +151,11 @@ def headers(tokens) -> dict:
         },
         "invalid_auth_type": {
             "Content-Type": "application/json",
-            "Authorization": f"Basic {token}",
+            "Authorization": "Basic " + tokens["unprivileged"],
+        },
+        "invalid_token": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer thisisatest",
         },
         "no_token": {"Content-Type": "application/json", "Authorization": "Bearer"},
         "no_auth": {"Content-Type": "application/json"},

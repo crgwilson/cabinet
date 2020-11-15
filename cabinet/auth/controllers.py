@@ -13,6 +13,7 @@ from cabinet import database
 from cabinet._types import ApiObject, ApiObjectAttribute
 from cabinet.auth.models import Permission, Role, Session
 from cabinet.auth.permissions import ApiPermission
+from cabinet.exceptions import InvalidToken, MalformedAuthHeader, UnsupportedAuthType
 from cabinet.response import CabinetApiResponse
 from cabinet.user.models import User
 
@@ -114,6 +115,28 @@ WRITE_METHODS = ["put", "post", "patch"]
 DELETE_METHODS = ["delete"]
 
 
+def get_auth_token_from_header(header: str) -> AuthToken:
+    try:
+        split_header: List[str] = header.split()
+        auth_type: str = split_header[0]
+        auth_payload: str = split_header[1]
+        auth_bytes: bytes = str.encode(auth_payload)
+    except IndexError:
+        logger.error("Received request with malformed 'Authorization' header")
+        raise MalformedAuthHeader(header)
+
+    if auth_type != "Bearer":
+        raise UnsupportedAuthType(auth_type)
+
+    try:
+        token = AuthToken.decode(auth_bytes, current_app.config["CABINET_SECRET"])
+    except jwt.DecodeError:
+        logger.error("Received an auth token which could not be decoded")
+        raise InvalidToken(auth_payload)
+
+    return token
+
+
 def permission_required(api_object: str) -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -127,25 +150,14 @@ def permission_required(api_object: str) -> Callable:
 
             auth_header: Optional[str] = request.headers.get("Authorization")
             if not auth_header:
-                # TODO: Error here - Missing auth header
                 return CabinetApiResponse.unauthorized()
 
             try:
-                # auth_header: Optional[str] = request.headers.get("Authorization")
-                split_header: List[str] = auth_header.split()
-                auth_type: str = split_header[0]
-                auth_payload: bytes = str.encode(split_header[1])
-            except IndexError:
-                logger.error("Received request with malformed 'Authorization' header")
+                token = get_auth_token_from_header(auth_header)
+            except (InvalidToken, UnsupportedAuthType, MalformedAuthHeader):
                 return CabinetApiResponse.unauthorized()
 
-            if auth_type != "Bearer":
-                # TODO: Error here - unsupported auth type
-                return CabinetApiResponse.unauthorized()
-
-            # Wrap this in a try and error properly if theres a problem
-            token = AuthToken.decode(auth_payload, current_app.config["CABINET_SECRET"])
-            # Might error here too
+            # TODO: What happens if this raises an exception?
             session = get_session_with_token(token)
 
             if session.is_expired:
