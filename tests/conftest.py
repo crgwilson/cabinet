@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Dict, List
 
 import pytest
 
@@ -14,6 +15,35 @@ from tests.factories import (
 )
 
 test_config = DevelopmentCabinetConfig()
+
+
+class SpyLogger(object):
+    def __init__(self) -> None:
+        self.logs: Dict[str, List[str]] = {
+            "debug": [],
+            "info": [],
+            "warn": [],
+            "error": [],
+            "exception": [],
+        }
+
+    def debug(self, message: str) -> None:
+        self.logs["debug"].append(message)
+
+    def info(self, message: str) -> None:
+        self.logs["info"].append(message)
+
+    def warn(self, message: str) -> None:
+        self.logs["warn"].append(message)
+
+    def error(self, message: str) -> None:
+        self.logs["error"].append(message)
+
+    def exception(self, message: str) -> None:
+        self.logs["exception"].append(message)
+
+    def get_logs_by_level(self, log_level: str) -> List[str]:
+        return self.logs[log_level]
 
 
 @pytest.yield_fixture(scope="session")
@@ -162,6 +192,11 @@ def headers(tokens) -> dict:
     }
 
     yield headers
+
+
+@pytest.yield_fixture(scope="function")
+def logger() -> SpyLogger:
+    return SpyLogger()
 
 
 @pytest.fixture

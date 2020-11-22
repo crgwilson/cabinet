@@ -12,7 +12,9 @@ class UserOutputSchema(Schema):
     id = fields.Integer(required=True)
     username = fields.String(required=True)
 
-    roles = fields.List(fields.Nested(lambda: RoleOutputSchema(only=["id"])))
+    roles: fields.List = fields.List(
+        fields.Nested(lambda: RoleOutputSchema(only=["id"]))  # type: ignore
+    )
 
     created_on = fields.DateTime(required=True)
     updated_on = fields.DateTime(required=True)

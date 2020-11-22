@@ -66,7 +66,8 @@ class Session(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     user = relationship("User", back_populates="sessions")
 
-    ttl = db.Column(db.BigInteger)
+    # ttl in seconds
+    ttl = db.Column(db.BigInteger, server_default="3600")
     created_on = db.Column(db.DateTime, server_default=db.func.now())
 
     @property

@@ -6,14 +6,17 @@ from flask import Blueprint
 from flask_restful import Api
 
 import cabinet.auth.controllers as auth_controller
-from cabinet._types import ApiResponse
+from cabinet._types import ApiObject
 from cabinet.api import CabinetResource
 from cabinet.auth.controllers import permission_required
 from cabinet.auth.schemas import (
     login_input_schema,
+    login_output_schema,
     permission_list_schema,
     role_list_schema,
 )
+from cabinet.exceptions import IncorrectUsernameOrPassword
+from cabinet.response import CabinetApiResponse
 from cabinet.schema import validate_schema
 
 PERMISSION_API_OBJECT = "Permission"
@@ -43,18 +46,23 @@ class RoleList(CabinetResource):
         return rendered_result
 
 
-# TODO
 class Login(CabinetResource):
     @validate_schema(login_input_schema)
-    def post(self) -> ApiResponse:
-        ...
+    def post(self, data: ApiObject) -> Any:
+        username = data["username"]
+        password = data["password"]
 
+        try:
+            token: auth_controller.AuthToken = auth_controller.create_login_token(
+                username, password
+            )
+        except IncorrectUsernameOrPassword:
+            return CabinetApiResponse.unauthorized()
 
-# TODO
-class Logout(CabinetResource):
-    def post(self) -> ApiResponse:
-        ...
+        rendered_result = self.render(token, login_output_schema)
+        return rendered_result
 
 
 api.add_resource(PermissionList, "/permissions", endpoint="permissions")
 api.add_resource(RoleList, "/roles", endpoint="roles")
+api.add_resource(Login, "/login", endpoint="login")

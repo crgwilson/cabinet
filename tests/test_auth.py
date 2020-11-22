@@ -1,9 +1,59 @@
+import json
+
 import pytest
 
 from cabinet.auth.controllers import AuthToken, get_all_user_permissions, has_permission
 from cabinet.auth.permissions import ApiPermission, all_roles
 
 from tests.constants import API_TEST_CASES
+
+
+@pytest.mark.parametrize(
+    "use_real_user,use_real_password,expected_status_code",
+    [
+        (True, True, 200),
+        (True, False, 401),
+        (False, True, 401),
+        (False, False, 401),
+    ],
+)
+def test_api_login_post(
+    use_real_user,
+    use_real_password,
+    expected_status_code,
+    client,
+    headers,
+    user_predictable_password,
+) -> None:
+    real_username = user_predictable_password.username
+    real_password = "password"
+
+    fake_username = "this_is_a_fake_username"
+    fake_password = "this_is_a_fake_password"
+
+    if use_real_user:
+        username = real_username
+    else:
+        username = fake_username
+
+    if use_real_password:
+        password = real_password
+    else:
+        password = fake_password
+
+    response = client.post(
+        "/api/v1/login",
+        data=json.dumps({"username": username, "password": password}),
+        headers=headers["no_auth"],
+    )
+
+    assert response.status_code == expected_status_code
+
+    if response.status_code == 200:
+        assert "token" in response.json
+
+        token = response.json["token"]
+        assert isinstance(token, str)
 
 
 @pytest.mark.parametrize(

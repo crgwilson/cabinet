@@ -13,8 +13,15 @@ from cabinet import database
 from cabinet._types import ApiObject, ApiObjectAttribute
 from cabinet.auth.models import Permission, Role, Session
 from cabinet.auth.permissions import ApiPermission
-from cabinet.exceptions import InvalidToken, MalformedAuthHeader, UnsupportedAuthType
+from cabinet.exceptions import (
+    IncorrectUsernameOrPassword,
+    InvalidToken,
+    MalformedAuthHeader,
+    MissingConfiguration,
+    UnsupportedAuthType,
+)
 from cabinet.response import CabinetApiResponse
+from cabinet.user.controllers import get_user_by_username, validate_user_credentials
 from cabinet.user.models import User
 
 logger = get_logger(__name__)
@@ -46,6 +53,12 @@ class AuthToken(object):
             algorithm=self.ALGO,
         )
 
+    @property
+    def token(self) -> str:
+        token_bytes: bytes = self.encode()
+        token_str: str = str(token_bytes)
+        return token_str
+
     @classmethod
     def decode(cls, token: bytes, secret: str) -> "AuthToken":
         decoded = jwt.decode(token, secret, algorithms=cls.ALGO)
@@ -56,6 +69,25 @@ class AuthToken(object):
             ttl=decoded["ttl"],
             secret=secret,
         )
+
+    @classmethod
+    def from_session(cls, session: Session, secret: str) -> "AuthToken":
+        return cls(
+            user_id=session.user_id,
+            created_on=session.created_on,
+            ttl=session.ttl,
+            secret=secret,
+        )
+
+
+def get_token_secret() -> str:
+    secret_key_name = "CABINET_SECRET"
+    try:
+        secret: str = current_app.config[secret_key_name]
+    except KeyError:
+        raise MissingConfiguration(secret_key_name)
+
+    return secret
 
 
 def get_all_permissions() -> List[Permission]:
@@ -110,6 +142,21 @@ def delete_session(session_id: int) -> None:
     database.delete(session)
 
 
+def create_login_token(username: str, password: str) -> AuthToken:
+    user = get_user_by_username(username)
+    if not user:
+        raise IncorrectUsernameOrPassword(username)
+
+    if not validate_user_credentials(username, password):
+        raise IncorrectUsernameOrPassword(username)
+
+    session: Session = create_session(user_id=user.id)
+    secret: str = get_token_secret()
+    token: AuthToken = AuthToken.from_session(session, secret)
+
+    return token
+
+
 READ_METHODS = ["get"]
 WRITE_METHODS = ["put", "post", "patch"]
 DELETE_METHODS = ["delete"]
@@ -129,7 +176,8 @@ def get_auth_token_from_header(header: str) -> AuthToken:
         raise UnsupportedAuthType(auth_type)
 
     try:
-        token = AuthToken.decode(auth_bytes, current_app.config["CABINET_SECRET"])
+        secret = get_token_secret()
+        token = AuthToken.decode(auth_bytes, secret)
     except jwt.DecodeError:
         logger.error("Received an auth token which could not be decoded")
         raise InvalidToken(auth_payload)
@@ -143,7 +191,6 @@ def permission_required(api_object: str) -> Callable:
         def check_permissions(*args: Any, **kwargs: Any) -> Any:
             # TODO: Change the above return annotation
             if not api_object:
-                # TODO: Raise an exception here because we need this variable
                 return CabinetApiResponse.internal_server_error(
                     "Could not determine required permissions for this request"
                 )
@@ -161,7 +208,6 @@ def permission_required(api_object: str) -> Callable:
             session = get_session_with_token(token)
 
             if session.is_expired:
-                # TODO: Session token has expired, return unauthorized
                 return CabinetApiResponse.unauthorized()
 
             required_permission = ApiPermission(
