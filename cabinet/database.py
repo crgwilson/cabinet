@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, List, Union
 
 from flask_sqlalchemy.model import DefaultMeta
 
@@ -39,8 +39,9 @@ def get_list(model: DefaultMeta, value: Union[int, str], column: str = "id") -> 
     return model.query.filter(get_model_column(model, column) == value).all()
 
 
-def get_all(model: DefaultMeta) -> Any:
-    return model.query.all()
+def get_all(model: DefaultMeta) -> List[Any]:
+    results: List[DefaultMeta] = model.query.all()
+    return results
 
 
 def insert(model: DefaultMeta) -> DefaultMeta:

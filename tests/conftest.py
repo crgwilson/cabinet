@@ -1,47 +1,54 @@
-from flask.wrappers import Response
+from datetime import datetime
+from typing import Dict, List
 
 import pytest
 
 from cabinet import create_app
-from cabinet.config import CabinetConfig
+from cabinet.config import DevelopmentCabinetConfig
 from cabinet.database import db as app_db
-from cabinet.response import HTTPResponseMessages, HTTPStatusCodes
+
+from tests.factories import (
+    AdminUserFactory,
+    SessionFactory,
+    SessionTokenFactory,
+    UserFactory,
+)
+
+test_config = DevelopmentCabinetConfig()
 
 
-class Helpers:
-    SUCCESS_CODE = HTTPStatusCodes.OK.value
-    NOT_FOUND_CODE = HTTPStatusCodes.NOT_FOUND.value
-    ERROR_CODE = HTTPStatusCodes.INTERNAL_SERVER_ERROR.value
+class SpyLogger(object):
+    def __init__(self) -> None:
+        self.logs: Dict[str, List[str]] = {
+            "debug": [],
+            "info": [],
+            "warn": [],
+            "error": [],
+            "exception": [],
+        }
 
-    SUCCESS_MESSAGE = HTTPResponseMessages.OK.value
-    NOT_FOUND_MESSAGE = HTTPResponseMessages.NOT_FOUND.value
+    def debug(self, message: str) -> None:
+        self.logs["debug"].append(message)
 
-    SUCCESS_JSON = {"message": SUCCESS_MESSAGE}
-    NOT_FOUND_JSON = {"message": NOT_FOUND_MESSAGE}
+    def info(self, message: str) -> None:
+        self.logs["info"].append(message)
 
-    CONTENT_TYPE = "application/json"
+    def warn(self, message: str) -> None:
+        self.logs["warn"].append(message)
 
-    def assert_valid(self, response: Response) -> None:
-        assert response.is_json
-        assert response.content_type == self.CONTENT_TYPE
+    def error(self, message: str) -> None:
+        self.logs["error"].append(message)
 
-    def assert_success(self, response: Response) -> None:
-        self.assert_valid(response)
-        assert response.status_code == self.SUCCESS_CODE
+    def exception(self, message: str) -> None:
+        self.logs["exception"].append(message)
 
-    def assert_not_found(self, response: Response) -> None:
-        self.assert_valid(response)
-        assert response.status_code == self.NOT_FOUND_CODE
-        assert response.json == self.NOT_FOUND_JSON
-
-    def assert_failure(self, response: Response) -> None:
-        self.assert_valid(response)
-        assert response.status_code == self.ERROR_CODE
+    def get_logs_by_level(self, log_level: str) -> List[str]:
+        return self.logs[log_level]
 
 
 @pytest.yield_fixture(scope="session")
 def app(request):
-    flask_app = create_app(CabinetConfig())
+    flask_app = create_app(test_config)
     ctx = flask_app.app_context()
     ctx.push()
 
@@ -75,5 +82,123 @@ def client(app, session):
 
 
 @pytest.fixture
-def helpers() -> Helpers:
-    return Helpers()
+def user(session):
+    user_factory = UserFactory()
+    user = user_factory.new()
+
+    session.commit()
+    return user
+
+
+@pytest.fixture
+def admin_user(session):
+    admin_user_factory = AdminUserFactory()
+    admin_user = admin_user_factory.new()
+
+    session.commit()
+    return admin_user
+
+
+@pytest.fixture
+def user_predictable_password(session):
+    user_factory = AdminUserFactory()
+    user = user_factory.new(password="password")  # noqa: S106
+
+    session.commit()
+    return user
+
+
+@pytest.yield_fixture
+def token(session):
+    admin_user_id = 1
+
+    session_factory = SessionFactory()
+    new_session = session_factory.new(admin_user_id)
+
+    session.commit()
+
+    token_factory = SessionTokenFactory()
+    token = token_factory.new(new_session, test_config.CABINET_SECRET)
+
+    yield token.decode("utf-8")
+
+
+@pytest.yield_fixture
+def expired_token(session):
+    admin_user_id = 1
+
+    session_factory = SessionFactory()
+    new_session = session_factory.new(admin_user_id, ttl=0)
+
+    session.commit()
+
+    token_factory = SessionTokenFactory()
+    token = token_factory.new(new_session, test_config.CABINET_SECRET)
+
+    yield token.decode("utf-8")
+
+
+@pytest.yield_fixture
+def tokens(session, user) -> dict:
+    admin_user_id = 1
+    tokens_to_return = {}
+
+    session_factory = SessionFactory()
+    privileged_session = session_factory.new(admin_user_id)
+    expired_session = session_factory.new(admin_user_id, ttl=0)
+    unprivileged_session = session_factory.new(user.id)
+
+    session.commit()
+
+    token_factory = SessionTokenFactory()
+    privileged_token = token_factory.new(privileged_session, test_config.CABINET_SECRET)
+    expired_token = token_factory.new(expired_session, test_config.CABINET_SECRET)
+    unprivileged_token = token_factory.new(
+        unprivileged_session, test_config.CABINET_SECRET
+    )
+
+    tokens_to_return["privileged"] = privileged_token.decode("utf-8")
+    tokens_to_return["expired"] = expired_token.decode("utf-8")
+    tokens_to_return["unprivileged"] = unprivileged_token.decode("utf-8")
+
+    yield tokens_to_return
+
+
+@pytest.yield_fixture(scope="function")
+def headers(tokens) -> dict:
+    headers = {
+        "valid": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + tokens["privileged"],
+        },
+        "expired": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + tokens["expired"],
+        },
+        "no_permissions": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + tokens["unprivileged"],
+        },
+        "invalid_auth_type": {
+            "Content-Type": "application/json",
+            "Authorization": "Basic " + tokens["unprivileged"],
+        },
+        "invalid_token": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer thisisatest",
+        },
+        "no_token": {"Content-Type": "application/json", "Authorization": "Bearer"},
+        "no_auth": {"Content-Type": "application/json"},
+    }
+
+    yield headers
+
+
+@pytest.yield_fixture(scope="function")
+def logger() -> SpyLogger:
+    return SpyLogger()
+
+
+@pytest.fixture
+def now() -> datetime:
+    return datetime.now()
