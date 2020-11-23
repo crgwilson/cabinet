@@ -46,7 +46,7 @@ class SpyLogger(object):
         return self.logs[log_level]
 
 
-@pytest.yield_fixture(scope="session")
+@pytest.fixture(scope="session")
 def app(request):
     flask_app = create_app(test_config)
     ctx = flask_app.app_context()
@@ -68,7 +68,7 @@ def db(app, request):
     app_db.drop_all()
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def session(db, request):
     db.session.begin_nested()
     yield db.session
@@ -108,7 +108,7 @@ def user_predictable_password(session):
     return user
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def token(session):
     admin_user_id = 1
 
@@ -123,7 +123,7 @@ def token(session):
     yield token.decode("utf-8")
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def expired_token(session):
     admin_user_id = 1
 
@@ -138,7 +138,7 @@ def expired_token(session):
     yield token.decode("utf-8")
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def tokens(session, user) -> dict:
     admin_user_id = 1
     tokens_to_return = {}
@@ -164,7 +164,7 @@ def tokens(session, user) -> dict:
     yield tokens_to_return
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def headers(tokens) -> dict:
     headers = {
         "valid": {
@@ -194,7 +194,7 @@ def headers(tokens) -> dict:
     yield headers
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def logger() -> SpyLogger:
     return SpyLogger()
 
