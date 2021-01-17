@@ -6,7 +6,9 @@ import pytest
 from cabinet import create_app
 from cabinet.config import DevelopmentCabinetConfig
 from cabinet.database import db as app_db
+from cabinet.nfsganesha.constants import nfs_ganesha_constants
 
+from tests.dbus import MockDbus, MockDbusObject, MockDbusService, mock_show_exports
 from tests.factories import (
     AdminUserFactory,
     SessionFactory,
@@ -197,6 +199,24 @@ def headers(tokens) -> dict:
 @pytest.fixture(scope="function")
 def logger() -> SpyLogger:
     return SpyLogger()
+
+
+@pytest.fixture(scope="function")
+def dbus() -> MockDbus:
+    export_manager_methods = {}
+    for method in nfs_ganesha_constants.EXPORT_MANAGER_METHODS:
+        export_manager_methods[method] = mock_show_exports
+
+    mock_export_manager = MockDbusObject(
+        nfs_ganesha_constants.EXPORT_MANAGER_OBJECT, export_manager_methods
+    )
+
+    mock_dbus_service = MockDbusService(
+        nfs_ganesha_constants.SERVICE, [mock_export_manager]
+    )
+    mock_dbus = MockDbus([mock_dbus_service])
+
+    return mock_dbus
 
 
 @pytest.fixture
